@@ -1,11 +1,11 @@
 /*
     __ _____ _____ _____
  __|  |   __|     |   | |  JSON for Modern C++ (test suite)
-|  |  |__   |  |  | | | |  version 2.1.1
+|  |  |__   |  |  | | | |  version 3.1.0
 |_____|_____|_____|_|___|  https://github.com/nlohmann/json
 
 Licensed under the MIT License <http://opensource.org/licenses/MIT>.
-Copyright (c) 2013-2017 Niels Lohmann <http://nlohmann.me>.
+Copyright (c) 2013-2018 Niels Lohmann <http://nlohmann.me>.
 
 Permission is hereby  granted, free of charge, to any  person obtaining a copy
 of this software and associated  documentation files (the "Software"), to deal
@@ -28,7 +28,7 @@ SOFTWARE.
 
 #include "catch.hpp"
 
-#include "json.hpp"
+#include <nlohmann/json.hpp>
 using nlohmann::json;
 
 TEST_CASE("concepts")
@@ -72,8 +72,8 @@ TEST_CASE("concepts")
         // X::size_type must return an unsigned integer
         CHECK((std::is_unsigned<json::size_type>::value));
         // X::size_type can represent any non-negative value of X::difference_type
-        CHECK(static_cast<size_t>(std::numeric_limits<json::difference_type>::max()) <=
-              static_cast<size_t>(std::numeric_limits<json::size_type>::max()));
+        CHECK(static_cast<json::size_type>(std::numeric_limits<json::difference_type>::max()) <=
+              std::numeric_limits<json::size_type>::max());
 
         // the expression "X u" has the post-condition "u.empty()"
         {
@@ -94,6 +94,7 @@ TEST_CASE("concepts")
 
         SECTION("MoveConstructible")
         {
+            CHECK(std::is_move_constructible<json>::value);
             CHECK(std::is_nothrow_move_constructible<json>::value);
         }
 

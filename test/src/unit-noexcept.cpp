@@ -1,11 +1,11 @@
 /*
     __ _____ _____ _____
  __|  |   __|     |   | |  JSON for Modern C++ (test suite)
-|  |  |__   |  |  | | | |  version 2.1.1
+|  |  |__   |  |  | | | |  version 3.1.0
 |_____|_____|_____|_|___|  https://github.com/nlohmann/json
 
 Licensed under the MIT License <http://opensource.org/licenses/MIT>.
-Copyright (c) 2013-2017 Niels Lohmann <http://nlohmann.me>.
+Copyright (c) 2013-2018 Niels Lohmann <http://nlohmann.me>.
 
 Permission is hereby  granted, free of charge, to any  person obtaining a copy
 of this software and associated  documentation files (the "Software"), to deal
@@ -27,7 +27,7 @@ SOFTWARE.
 */
 
 #include "catch.hpp"
-#include "json.hpp"
+#include <nlohmann/json.hpp>
 
 using nlohmann::json;
 
@@ -57,3 +57,21 @@ static_assert(noexcept(json(pod{})), "");
 static_assert(noexcept(j.get<pod>()), "");
 static_assert(not noexcept(j.get<pod_bis>()), "");
 static_assert(noexcept(json(pod{})), "");
+
+TEST_CASE("runtime checks")
+{
+    SECTION("nothrow-copy-constructible exceptions")
+    {
+        // for ERR60-CPP (https://github.com/nlohmann/json/issues/531):
+        // Exceptions should be nothrow-copy-constructible. However, compilers
+        // treat std::runtime_exception differently in this regard. Therefore,
+        // we can only demand nothrow-copy-constructibility for our exceptions
+        // if std::runtime_exception is.
+        CHECK(std::is_nothrow_copy_constructible<json::exception>::value == std::is_nothrow_copy_constructible<std::runtime_error>::value);
+        CHECK(std::is_nothrow_copy_constructible<json::parse_error>::value == std::is_nothrow_copy_constructible<std::runtime_error>::value);
+        CHECK(std::is_nothrow_copy_constructible<json::invalid_iterator>::value == std::is_nothrow_copy_constructible<std::runtime_error>::value);
+        CHECK(std::is_nothrow_copy_constructible<json::type_error>::value == std::is_nothrow_copy_constructible<std::runtime_error>::value);
+        CHECK(std::is_nothrow_copy_constructible<json::out_of_range>::value == std::is_nothrow_copy_constructible<std::runtime_error>::value);
+        CHECK(std::is_nothrow_copy_constructible<json::other_error>::value == std::is_nothrow_copy_constructible<std::runtime_error>::value);
+    }
+}

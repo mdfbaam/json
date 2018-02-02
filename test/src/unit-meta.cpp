@@ -1,11 +1,11 @@
 /*
     __ _____ _____ _____
  __|  |   __|     |   | |  JSON for Modern C++ (test suite)
-|  |  |__   |  |  | | | |  version 2.1.1
+|  |  |__   |  |  | | | |  version 3.1.0
 |_____|_____|_____|_|___|  https://github.com/nlohmann/json
 
 Licensed under the MIT License <http://opensource.org/licenses/MIT>.
-Copyright (c) 2013-2016 Niels Lohmann <http://nlohmann.me>.
+Copyright (c) 2013-2018 Niels Lohmann <http://nlohmann.me>.
 
 Permission is hereby  granted, free of charge, to any  person obtaining a copy
 of this software and associated  documentation files (the "Software"), to deal
@@ -28,20 +28,29 @@ SOFTWARE.
 
 #include "catch.hpp"
 
-#include "json.hpp"
+#include <nlohmann/json.hpp>
 using nlohmann::json;
 
 TEST_CASE("version information")
 {
-    SECTION("version()")
+    SECTION("meta()")
     {
-        CHECK(json::meta()["name"] == "JSON for Modern C++");
-        CHECK(json::meta()["version"] == json(
+        json j = json::meta();
+
+        CHECK(j["name"] == "JSON for Modern C++");
+        CHECK(j["copyright"] == "(C) 2013-2017 Niels Lohmann");
+        CHECK(j["url"] == "https://github.com/nlohmann/json");
+        CHECK(j["version"] == json(
         {
-            {"string", "2.1.1"},
-            {"major", 2},
+            {"string", "3.1.0"},
+            {"major", 3},
             {"minor", 1},
-            {"patch", 1}
+            {"patch", 0}
         }));
+
+        CHECK(j.find("platform") != j.end());
+        CHECK(j.at("compiler").find("family") != j.at("compiler").end());
+        CHECK(j.at("compiler").find("version") != j.at("compiler").end());
+        CHECK(j.at("compiler").find("c++") != j.at("compiler").end());
     }
 }

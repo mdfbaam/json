@@ -1,20 +1,55 @@
 .PHONY: pretty clean ChangeLog.md
 
-# used programs
-RE2C = re2c
-SED = sed
+SRCS = include/nlohmann/json.hpp \
+       include/nlohmann/json_fwd.hpp \
+       include/nlohmann/adl_serializer.hpp \
+       include/nlohmann/detail/conversions/from_json.hpp \
+       include/nlohmann/detail/conversions/to_chars.hpp \
+       include/nlohmann/detail/conversions/to_json.hpp \
+       include/nlohmann/detail/exceptions.hpp \
+       include/nlohmann/detail/input/binary_reader.hpp \
+       include/nlohmann/detail/input/input_adapters.hpp \
+       include/nlohmann/detail/input/lexer.hpp \
+       include/nlohmann/detail/input/parser.hpp \
+       include/nlohmann/detail/iterators/internal_iterator.hpp \
+       include/nlohmann/detail/iterators/iter_impl.hpp \
+       include/nlohmann/detail/iterators/iteration_proxy.hpp \
+       include/nlohmann/detail/iterators/json_reverse_iterator.hpp \
+       include/nlohmann/detail/iterators/primitive_iterator.hpp \
+       include/nlohmann/detail/json_pointer.hpp \
+       include/nlohmann/detail/json_ref.hpp \
+       include/nlohmann/detail/macro_scope.hpp \
+       include/nlohmann/detail/macro_unscope.hpp \
+       include/nlohmann/detail/meta.hpp \
+       include/nlohmann/detail/output/binary_writer.hpp \
+       include/nlohmann/detail/output/output_adapters.hpp \
+       include/nlohmann/detail/output/serializer.hpp \
+       include/nlohmann/detail/value_t.hpp
+
+UNAME = $(shell uname)
+CXX=clang++
+
+AMALGAMATED_FILE=single_include/nlohmann/json.hpp
 
 # main target
 all:
-	$(MAKE) -C test
-
-# clean up
-clean:
-	rm -fr json_unit json_benchmarks fuzz fuzz-testing *.dSYM test/*.dSYM
-	rm -fr benchmarks/files/numbers/*.json
-	$(MAKE) clean -Cdoc
-	$(MAKE) clean -Ctest
-
+	@echo "amalgamate - amalgamate file single_include/nlohmann/json.hpp from the include/nlohmann sources"
+	@echo "ChangeLog.md - generate ChangeLog file"
+	@echo "check - compile and execute test suite"
+	@echo "check-amalgamation - check whether sources have been amalgamated"
+	@echo "check-fast - compile and execute test suite (skip long-running tests)"
+	@echo "clean - remove built files"
+	@echo "coverage - create coverage information with lcov"
+	@echo "cppcheck - analyze code with cppcheck"
+	@echo "doctest - compile example files and check their output"
+	@echo "fuzz_testing - prepare fuzz testing of the JSON parser"
+	@echo "fuzz_testing_cbor - prepare fuzz testing of the CBOR parser"
+	@echo "fuzz_testing_msgpack - prepare fuzz testing of the MessagePack parser"
+	@echo "fuzz_testing_ubjson - prepare fuzz testing of the UBJSON parser"
+	@echo "json_unit - create single-file test executable"
+	@echo "pedantic_clang - run Clang with maximal warning flags"
+	@echo "pedantic_gcc - run GCC with maximal warning flags"
+	@echo "pretty - beautify code with Artistic Style"
 
 ##########################################################################
 # unit tests
@@ -30,6 +65,27 @@ check:
 
 check-fast:
 	$(MAKE) check -C test TEST_PATTERN=""
+
+# clean up
+clean:
+	rm -fr json_unit json_benchmarks fuzz fuzz-testing *.dSYM test/*.dSYM
+	rm -fr benchmarks/files/numbers/*.json
+	rm -fr build_coverage
+	$(MAKE) clean -Cdoc
+	$(MAKE) clean -Ctest
+
+
+##########################################################################
+# coverage
+##########################################################################
+
+coverage:
+	mkdir build_coverage
+	cd build_coverage ; CXX=g++-5 cmake .. -GNinja -DJSON_Coverage=ON
+	cd build_coverage ; ninja
+	cd build_coverage ; ctest -j10
+	cd build_coverage ; ninja lcov_html
+	open build_coverage/test/html/index.html
 
 
 ##########################################################################
@@ -49,19 +105,88 @@ doctest:
 # -Wno-documentation-unknown-command: code uses user-defined commands like @complexity
 # -Wno-exit-time-destructors: warning in Catch code
 # -Wno-keyword-macro: unit-tests use "#define private public"
-# -Wno-deprecated-declarations: some functions are deprecated until 3.0.0
-# -Wno-range-loop-analysis: iterator_wrapper tests tests "for(const auto i...)"
-pedantic:
+# -Wno-deprecated-declarations: the library deprecated some functions
+# -Wno-weak-vtables: exception class is defined inline, but has virtual method
+# -Wno-range-loop-analysis: items tests "for(const auto i...)"
+# -Wno-float-equal: not all comparisons in the tests can be replaced by Approx
+# -Wno-switch-enum -Wno-covered-switch-default: pedantic/contradicting warnings about switches
+# -Wno-padded: padding is nothing to warn about
+pedantic_clang:
 	$(MAKE) json_unit CXXFLAGS="\
-		-std=c++11 \
+		-std=c++11 -Wno-c++98-compat -Wno-c++98-compat-pedantic \
 		-Werror \
 		-Weverything \
 		-Wno-documentation-unknown-command \
 		-Wno-exit-time-destructors \
 		-Wno-keyword-macro \
 		-Wno-deprecated-declarations \
-		-Wno-range-loop-analysis"
+		-Wno-weak-vtables \
+		-Wno-range-loop-analysis \
+		-Wno-float-equal \
+		-Wno-switch-enum -Wno-covered-switch-default \
+		-Wno-padded"
 
+# calling GCC with most warnings
+pedantic_gcc:
+	$(MAKE) json_unit CXXFLAGS="\
+		-std=c++11 \
+		-Wno-deprecated-declarations \
+		-Werror \
+		-Wall -Wpedantic -Wextra \
+		-Walloca \
+		-Warray-bounds=2 \
+		-Wcast-qual -Wcast-align \
+		-Wchar-subscripts \
+		-Wconditionally-supported \
+		-Wconversion \
+		-Wdate-time \
+		-Wdeprecated \
+		-Wdisabled-optimization \
+		-Wdouble-promotion \
+		-Wduplicated-branches \
+		-Wduplicated-cond \
+		-Wformat-overflow=2 \
+		-Wformat-signedness \
+		-Wformat-truncation=2 \
+		-Wformat=2 \
+		-Wno-ignored-qualifiers \
+		-Wimplicit-fallthrough=5 \
+		-Wlogical-op \
+		-Wmissing-declarations \
+		-Wmissing-format-attribute \
+		-Wmissing-include-dirs \
+		-Wnoexcept \
+		-Wnonnull \
+		-Wnull-dereference \
+		-Wold-style-cast \
+		-Woverloaded-virtual \
+		-Wparentheses \
+		-Wplacement-new=2 \
+		-Wredundant-decls \
+		-Wreorder \
+		-Wrestrict \
+		-Wshadow=global \
+		-Wshift-overflow=2 \
+		-Wsign-conversion \
+		-Wsign-promo \
+		-Wsized-deallocation \
+		-Wstrict-overflow=5 \
+		-Wsuggest-attribute=const \
+		-Wsuggest-attribute=format \
+		-Wsuggest-attribute=noreturn \
+		-Wsuggest-attribute=pure \
+		-Wsuggest-final-methods \
+		-Wsuggest-final-types \
+		-Wsuggest-override \
+		-Wtrigraphs \
+		-Wundef \
+		-Wuninitialized -Wunknown-pragmas \
+		-Wunused \
+		-Wunused-const-variable=2 \
+		-Wunused-macros \
+		-Wunused-parameter \
+		-Wuseless-cast \
+		-Wvariadic-macros"
 
 ##########################################################################
 # fuzzing
@@ -92,6 +217,14 @@ fuzz_testing_msgpack:
 	find test/data -size -5k -name *.msgpack | xargs -I{} cp "{}" fuzz-testing/testcases
 	@echo "Execute: afl-fuzz -i fuzz-testing/testcases -o fuzz-testing/out fuzz-testing/fuzzer"
 
+fuzz_testing_ubjson:
+	rm -fr fuzz-testing
+	mkdir -p fuzz-testing fuzz-testing/testcases fuzz-testing/out
+	$(MAKE) parse_ubjson_fuzzer -C test CXX=afl-clang++
+	mv test/parse_ubjson_fuzzer fuzz-testing/fuzzer
+	find test/data -size -5k -name *.ubjson | xargs -I{} cp "{}" fuzz-testing/testcases
+	@echo "Execute: afl-fuzz -i fuzz-testing/testcases -o fuzz-testing/out fuzz-testing/fuzzer"
+
 fuzzing-start:
 	afl-fuzz -S fuzzer1 -i fuzz-testing/testcases -o fuzz-testing/out fuzz-testing/fuzzer > /dev/null &
 	afl-fuzz -S fuzzer2 -i fuzz-testing/testcases -o fuzz-testing/out fuzz-testing/fuzzer > /dev/null &
@@ -112,20 +245,12 @@ fuzzing-stop:
 
 # call cppcheck on the main header file
 cppcheck:
-	cppcheck --enable=warning --inconclusive --force --std=c++11 src/json.hpp --error-exitcode=1
-
-# run clang sanitize (we are overrding the CXXFLAGS provided by travis in order to use gcc's libstdc++)
-clang_sanitize: clean
-	CXX=clang++ CXXFLAGS="-g -O2 -fsanitize=address -fsanitize=undefined -fno-omit-frame-pointer" $(MAKE) check
+	cppcheck --enable=warning --inconclusive --force --std=c++11 $(AMALGAMATED_FILE) --error-exitcode=1
 
 
 ##########################################################################
 # maintainer targets
 ##########################################################################
-
-# create scanner with re2c
-re2c: src/json.hpp.re2c
-	$(RE2C) -W --utf-8 --encoding-policy fail --bit-vectors --nested-ifs --no-debug-info $< | $(SED) '1d' > src/json.hpp
 
 # pretty printer
 pretty:
@@ -134,20 +259,31 @@ pretty:
 	   --indent-col1-comments --pad-oper --pad-header --align-pointer=type \
 	   --align-reference=type --add-brackets --convert-tabs --close-templates \
 	   --lineend=linux --preserve-date --suffix=none --formatted \
-	   src/json.hpp src/json.hpp.re2c test/src/*.cpp \
-	   benchmarks/benchmarks.cpp doc/examples/*.cpp
+	   $(SRCS) $(AMALGAMATED_FILE) test/src/*.cpp \
+	   benchmarks/src/benchmarks.cpp doc/examples/*.cpp
 
+# create single header file
+amalgamate: $(AMALGAMATED_FILE)
 
-##########################################################################
-# benchmarks
-##########################################################################
+$(AMALGAMATED_FILE): $(SRCS)
+	third_party/amalgamate/amalgamate.py -c third_party/amalgamate/config.json -s . --verbose=yes
+	$(MAKE) pretty
 
-# benchmarks
-json_benchmarks: benchmarks/benchmarks.cpp benchmarks/benchpress.hpp benchmarks/cxxopts.hpp src/json.hpp
-	cd benchmarks/files/numbers ; python generate.py
-	$(CXX) -std=c++11 -pthread $(CXXFLAGS) -DNDEBUG -O3 -flto -I src -I benchmarks $< $(LDFLAGS) -o $@
-	./json_benchmarks
+# check if single_include/nlohmann/json.hpp has been amalgamated from the nlohmann sources
+check-amalgamation:
+	@mv $(AMALGAMATED_FILE) $(AMALGAMATED_FILE)~
+	@$(MAKE) amalgamate
+	@diff $(AMALGAMATED_FILE) $(AMALGAMATED_FILE)~ || (echo "===================================================================\n  Amalgamation required! Please read the contribution guidelines\n  in file .github/CONTRIBUTING.md.\n===================================================================" ; mv $(AMALGAMATED_FILE)~ $(AMALGAMATED_FILE) ; false)
+	@mv $(AMALGAMATED_FILE)~ $(AMALGAMATED_FILE)
 
+# check if every header in nlohmann includes sufficient headers to be compiled
+# individually
+check-single-includes:
+	for x in $(SRCS); do \
+	  echo "#include <$$x>\nint main() {}\n" | sed 's|include/||' > single_include_test.cpp; \
+	  $(CXX) $(CXXFLAGS) -Iinclude -std=c++11 single_include_test.cpp -o single_include_test; \
+	  rm single_include_test.cpp single_include_test; \
+	done
 
 ##########################################################################
 # changelog

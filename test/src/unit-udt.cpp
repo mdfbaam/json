@@ -1,11 +1,11 @@
 /*
     __ _____ _____ _____
  __|  |   __|     |   | |  JSON for Modern C++ (test suite)
-|  |  |__   |  |  | | | |  version 2.1.1
+|  |  |__   |  |  | | | |  version 3.1.0
 |_____|_____|_____|_|___|  https://github.com/nlohmann/json
 
 Licensed under the MIT License <http://opensource.org/licenses/MIT>.
-Copyright (c) 2013-2016 Niels Lohmann <http://nlohmann.me>.
+Copyright (c) 2013-2018 Niels Lohmann <http://nlohmann.me>.
 
 Permission is hereby  granted, free of charge, to any  person obtaining a copy
 of this software and associated  documentation files (the "Software"), to deal
@@ -28,7 +28,7 @@ SOFTWARE.
 
 #include "catch.hpp"
 
-#include "json.hpp"
+#include <nlohmann/json.hpp>
 
 using nlohmann::json;
 
@@ -49,16 +49,19 @@ enum class country
 struct age
 {
     int m_val;
+    age(int rhs = 0) : m_val(rhs) {}
 };
 
 struct name
 {
     std::string m_val;
+    name(const std::string rhs = "") : m_val(rhs) {}
 };
 
 struct address
 {
     std::string m_val;
+    address(const std::string rhs = "") : m_val(rhs) {}
 };
 
 struct person
@@ -66,18 +69,24 @@ struct person
     age m_age;
     name m_name;
     country m_country;
+    person() : m_age(), m_name(), m_country() {}
+    person(const age& a, const name& n, const country& c) : m_age(a), m_name(n), m_country(c) {}
 };
 
 struct contact
 {
     person m_person;
     address m_address;
+    contact() : m_person(), m_address() {}
+    contact(const person& p, const address& a) : m_person(p), m_address(a) {}
 };
 
 struct contact_book
 {
     name m_book_name;
     std::vector<contact> m_contacts;
+    contact_book() : m_book_name(), m_contacts() {}
+    contact_book(const name& n, const std::vector<contact>& c) : m_book_name(n), m_contacts(c) {}
 };
 }
 
@@ -192,7 +201,7 @@ void from_json(const BasicJsonType& j, country& c)
     {
         {u8"中华人民共和国", country::china},
         {"France", country::france},
-        {"Российская Федерация", country::russia}
+        {u8"Российская Федерация", country::russia}
     };
 
     const auto it = m.find(str);
@@ -319,6 +328,8 @@ namespace udt
 struct legacy_type
 {
     std::string number;
+    legacy_type() : number() {}
+    legacy_type(const std::string& n) : number(n) {}
 };
 }
 
@@ -593,6 +604,8 @@ struct small_pod
 struct non_pod
 {
     std::string s;
+    non_pod() : s() {}
+    non_pod(const std::string& S) : s(S) {}
 };
 
 template <typename BasicJsonType>
@@ -678,4 +691,23 @@ TEST_CASE("custom serializer that does adl by default", "[udt]")
 
     CHECK(me == j.get<udt::person>());
     CHECK(me == cj.get<udt::person>());
+}
+
+namespace
+{
+struct incomplete;
+
+// std::is_constructible is broken on macOS' libc++
+// use the cppreference implementation
+
+template <typename T, typename = void>
+struct is_constructible_patched : std::false_type {};
+
+template <typename T>
+struct is_constructible_patched<T, decltype(void(json(std::declval<T>())))> : std::true_type {};
+}
+
+TEST_CASE("an incomplete type does not trigger a compiler error in non-evaluated context", "[udt]")
+{
+    static_assert(not is_constructible_patched<json, incomplete>::value, "");
 }

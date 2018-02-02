@@ -1,9 +1,9 @@
-cmake_minimum_required(VERSION 3.0)
+cmake_minimum_required(VERSION 3.0.0)
 
 # define the project
-project(nlohmann_json VERSION 2.1.1 LANGUAGES CXX)
+project(nlohmann_json VERSION 3.1.0 LANGUAGES CXX)
 
-message("Creating json")
+
 
 # create and configure the library target
 add_library(json INTERFACE)
